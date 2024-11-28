@@ -2,20 +2,25 @@ package info.patrickmaciel.favoriteSongs.favoriteSongs.app;
 
 import info.patrickmaciel.favoriteSongs.favoriteSongs.model.Artist;
 import info.patrickmaciel.favoriteSongs.favoriteSongs.model.ArtistType;
+import info.patrickmaciel.favoriteSongs.favoriteSongs.model.Music;
 import info.patrickmaciel.favoriteSongs.favoriteSongs.repository.ArtistRepository;
+import info.patrickmaciel.favoriteSongs.favoriteSongs.service.ConsultaChatGpt;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
+
   private final Scanner scanner = new Scanner(System.in);
+  private ConsultaChatGpt gpt;
   private ArtistRepository artistRepository;
   private List<Artist> artists = new ArrayList<>();
   private Optional<Artist> artistFound;
 
   public Main(ArtistRepository artistRepository) {
     this.artistRepository = artistRepository;
+    this.gpt = new ConsultaChatGpt();
   }
 
   public void showMenu() {
@@ -46,13 +51,13 @@ public class Main {
           listAllArtists();
           break;
         case 3:
-          System.out.println("Register a song for an Artist");
+          registerASongForAnArtist();
           break;
         case 4:
-          System.out.println("List songs for an Artist");
+          listAllSongsForAnArtist();
           break;
         case 5:
-          System.out.println("List all songs");
+          listAllSongs();
           break;
         case 0:
           System.out.println("Exiting...");
@@ -64,25 +69,103 @@ public class Main {
     }
   }
 
+  private void listAllSongs() {
+    System.out.println("Listing all songs for every artist");
+    artists = artistRepository.findAll();
+    artists.forEach(artist -> {
+      System.out.printf("Artist: %d - %s\n", artist.getId(), artist.getName());
+      artist.getMusics().forEach(music -> System.out.printf("\tMusic: %d - %s\n", music.getId(), music.getName()));
+      System.out.println("-------------------------------------------------");
+    });
+  }
+
+  private void searchForAnExistingArtist() {
+    System.out.println("Search for an existing artist on your database: ");
+    String artistName = scanner.nextLine();
+
+    artistFound = artistRepository.findByNameContainingIgnoreCase(artistName);
+    if (artistFound.isEmpty()) {
+      System.out.println("Artist not found");
+      return;
+    }
+  }
+
+  private void listAllSongsForAnArtist() {
+    searchForAnExistingArtist();
+
+    Artist artist = artistFound.get();
+
+    System.out.printf("Listing all songs for artist %s\n", artist.getName());
+    artist.getMusics().forEach(music -> System.out.printf("Music: %d - %s\n", music.getId(), music.getName()));
+  }
+
+  private void registerASongForAnArtist() {
+    searchForAnExistingArtist();
+
+    System.out.println("Type the music name for that artist: ");
+    String musicName = scanner.nextLine();
+
+    Artist artist = artistFound.get();
+    Music music = Music.builder()
+        .name(musicName.toUpperCase())
+        .artist(artist)
+        .build();
+
+    artist.setMusics(List.of(music));
+    artistRepository.save(artist);
+
+    System.out.println("Music registered successfully");
+  }
+
   private void listAllArtists() {
     System.out.println("Listing all artists");
-    artists.forEach(artist -> System.out.printf("Artist: %d - %s\n", artist.getId(), artist.getName()));
+    artists = artistRepository.findAll();
+    artists.forEach(System.out::println);
   }
 
   private void registerNewArtist() {
     System.out.println("Enter the artist name:");
     String artistName = scanner.nextLine();
 
-    System.out.println("Enter the artist type:");
-    String artistType = scanner.nextLine();
+    Optional<Artist> artistExists = artistRepository.findByNameContainingIgnoreCase(artistName);
+    if (artistExists.isPresent()) {
+      System.out.println(".");
+      return;
+    }
 
-    Artist artist = new Artist();
-    artist.setName(artistName);
-    artist.setType(artistType);
-    artists.add(artist);
+    String gptResponse = gpt.sendMessage(
+        String.format("Existe um artista cristão/gospel chamado %s? Responda sim ou não.", artistName));
 
+    if (!gptResponse.equalsIgnoreCase("Sim.")) {
+      System.out.println("Cê né crente não?");
+      return;
+    }
+
+    gpt.sendMessage(
+        String.format("O artista %s é um artista solo, dupla ou banda? Responda apenas solo, dupla ou banda.", artistName));
+
+    gpt.sendMessage(
+        String.format("Me retorne no seguinte formato as informações do Ano de formação, Gênero, Quantidade de Albuns e Quantidade músicas. Formato: ANO, GENERO, QTDE_ALBUNS, QTDE_MUSICAS.", artistName));
+
+    List<String> chatResponseHistory = gpt.getConversationHistory();
+    String[] extraDataParts = chatResponseHistory.get(5).split(",");
+    artistFound = Optional.ofNullable(Artist.builder()
+        .isGospelArtist(true)
+        .name(artistName.toUpperCase())
+        .type(ArtistType.fromString(chatResponseHistory.get(3).trim().replace(".", "")))
+        .releaseDate(Integer.parseInt(extraDataParts[0].trim().replaceAll("\\D+", "")))
+        .genre(extraDataParts[1].trim())
+        .albumCount(Integer.parseInt(extraDataParts[2].trim().replaceAll("\\D+", "")))
+        .songCount(Integer.parseInt(extraDataParts[3].trim().replaceAll("\\D+", "")))
+        .build());
+
+    if (artistFound.isEmpty()) {
+      System.out.println("Error while creating artist");
+      return;
+    }
+
+    Artist artist = artistFound.get();
     artistRepository.save(artist);
     System.out.println(artist);
   }
-
 }

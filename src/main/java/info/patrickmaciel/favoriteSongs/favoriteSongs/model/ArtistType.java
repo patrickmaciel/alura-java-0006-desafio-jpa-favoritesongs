@@ -3,7 +3,8 @@ package info.patrickmaciel.favoriteSongs.favoriteSongs.model;
 public enum ArtistType {
   BAND("Banda"),
   SOLO("Solo"),
-  DUO("Dupla");
+  DUO("Dupla"),
+  OTHER("Outro");
 
   private String description;
 
@@ -17,6 +18,6 @@ public enum ArtistType {
         return type;
       }
     }
-    throw new IllegalArgumentException("Type not found");
+    return OTHER;
   }
 }

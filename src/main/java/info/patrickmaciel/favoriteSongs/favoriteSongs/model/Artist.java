@@ -1,58 +1,59 @@
 package info.patrickmaciel.favoriteSongs.favoriteSongs.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name="artists")
+@Table(name = "artists")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Artist {
-
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-
+  @Column(nullable = true)
+  private Boolean isGospelArtist;
+  @Column(unique = true)
   private String name;
-
   @Enumerated(EnumType.STRING)
   private ArtistType type;
+  private int releaseDate;
+  private String genre;
+  private int albumCount;
+  private int songCount;
 
-  public Artist() {}
-
-  public void setId(Long id) {
-    this.id = id;
-  }
-
-  public Long getId() {
-    return id;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public ArtistType getType() {
-    return type;
-  }
+  @Getter
+  @OneToMany(mappedBy = "artist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  private List<Music> musics = new ArrayList<>();
 
   public void setType(String type) {
     this.type = ArtistType.fromString(type);
+  }
+
+  public void setMusics(List<Music> musics) {
+    musics.forEach(music -> music.setArtist(this));
+    this.musics = musics;
   }
 
   @Override
   public String toString() {
     return "Artist {" +
         "id=" + id +
+        ", isGospelArtist=" + isGospelArtist +
         ", name='" + name + '\'' +
         ", type=" + type +
+        ", releaseDate=" + releaseDate +
+        ", genre='" + genre + '\'' +
+        ", albumCount=" + albumCount +
+        ", songCount=" + songCount +
         " }";
   }
 }
