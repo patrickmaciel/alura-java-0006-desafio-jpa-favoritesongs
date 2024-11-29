@@ -33,6 +33,9 @@ public class Main {
           3 - Register a song for an Artist
           4 - List songs for an Artist
           5 - List all songs
+          6 - Search for an artist using Chatgpt
+          7 - Search for a song
+          8 - List songs for an Artist using JPQL
           0 - Exit
           """;
 
@@ -59,6 +62,15 @@ public class Main {
         case 5:
           listAllSongs();
           break;
+        case 6:
+          searchForAnArtistUsingChatgpt();
+          break;
+        case 7:
+          searchForASong();
+          break;
+        case 8:
+          searchForAnExistingArtistUsingJPQL();
+          break;
         case 0:
           System.out.println("Exiting...");
           break;
@@ -67,6 +79,32 @@ public class Main {
           break;
       }
     }
+  }
+
+  private void searchForASong() {
+    System.out.println("Type the song name you want to search for: ");
+    String songName = scanner.nextLine();
+
+    List<Music> musics = artistRepository.searchMusicsByName(songName);
+    musics.forEach(music -> System.out.printf("Music %d - %s\n", music.getId(), music.getName()));
+  }
+
+  private void searchForAnExistingArtistUsingJPQL() {
+    System.out.println("Type the artist name you want to search for: ");
+    String artistName = scanner.nextLine();
+
+    List<Music> musics = artistRepository.searchMusicsByArtistName(artistName);
+    musics.forEach(music -> System.out.printf("Music %d - %s\n", music.getId(), music.getName()));
+  }
+
+  private void searchForAnArtistUsingChatgpt() {
+    System.out.println("Type the artist name you want to search for: ");
+    String artistName = scanner.nextLine();
+
+    String gptResponse = gpt.sendMessage(
+        String.format("Quem é o artista %s ? Obs.: é cristão/gospel.", artistName));
+
+    System.out.println(gptResponse);
   }
 
   private void listAllSongs() {
